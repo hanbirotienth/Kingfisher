@@ -42,7 +42,7 @@ public protocol Resource {
  When passed to image view set methods, Kingfisher will try to download the target 
  image from the `downloadURL`, and then store it with the `cacheKey` as the key in cache.
  */
-public struct KFImageResource: Resource {
+public struct ImageResource: Resource {
     /// The key used in cache.
     public let cacheKey: String
     

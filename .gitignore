@@ -87,3 +87,9 @@ vendor/
 Sources/Talk Call/DistributionSummary.plist
 Sources/Talk Call/ExportOptions.plist
 Sources/Talk Call/Packaging.log
+Pods/Target Support Files/Nocilla-iOS/Nocilla-iOS.debug.xcconfig
+Pods/Target Support Files/Nocilla-iOS/Nocilla-iOS.release.xcconfig
+Pods/Target Support Files/Nocilla-macOS/Nocilla-macOS.debug.xcconfig
+Pods/Target Support Files/Nocilla-macOS/Nocilla-macOS.release.xcconfig
+Pods/Target Support Files/Nocilla-tvOS/Nocilla-tvOS.debug.xcconfig
+Pods/Target Support Files/Nocilla-tvOS/Nocilla-tvOS.release.xcconfig

@@ -25,8 +25,8 @@
 //  THE SOFTWARE.
 
 import Foundation
-
-/// An `CacheSerializer` would be used to convert some data to an image object for 
+import UIKit
+/// An `CacheSerializer` would be used to convert some data to an image object for
 /// retrieving from disk cache and vice versa for storing to disk cache.
 public protocol CacheSerializer {
     
@@ -64,16 +64,34 @@ public struct DefaultCacheSerializer: CacheSerializer {
     
     public func data(with image: Image, original: Data?) -> Data? {
         let imageFormat = original?.kf.imageFormat ?? .unknown
+        
+        var jpegData = image.kf.jpegRepresentation(compressionQuality: 1.0)
+        
+        if imageFormat == .JPEG {
+            jpegData = self.addUserCommentToJpeg(jpeg: jpegData, original: original)
+        }
 
         let data: Data?
         switch imageFormat {
         case .PNG: data = image.kf.pngRepresentation()
-        case .JPEG: data = image.kf.jpegRepresentation(compressionQuality: 1.0)
+        case .JPEG: data = jpegData
         case .GIF: data = image.kf.gifRepresentation()
         case .unknown: data = original ?? image.kf.normalized.kf.pngRepresentation()
         }
 
         return data
+    }
+    
+    
+    public func addUserCommentToJpeg(jpeg:Data?, original: Data?) -> Data? {
+        if let jpegData = jpeg, let originalData = original {
+            let userComment = GeoTagImage.getMetaDataUserComment(from:originalData, needShowLog: true)
+            if userComment != "" {
+                let newData = GeoTagImage.mark(jpegData, userComment: userComment)
+                return newData
+            }
+        }
+        return jpeg
     }
     
     public func image(with data: Data, options: KingfisherOptionsInfo?) -> Image? {
@@ -83,5 +101,79 @@ public struct DefaultCacheSerializer: CacheSerializer {
             scale: options.scaleFactor,
             preloadAllAnimationData: options.preloadAllAnimationData,
             onlyFirstFrame: options.onlyLoadFirstFrame)
+    }
+}
+
+
+open class GeoTagImage: NSObject {
+    
+    /// Writes GPS data into the meta data.
+    /// - Parameters:
+    ///   - data: Coordinate meta data will be written to the copy of this data.
+    ///   - coordinate: Cooordinates to write to meta data.
+    @objc public static func mark(_ data: Data, userComment: String) -> Data {
+        
+        if userComment == "" {
+            return data
+        }
+        
+        var source: CGImageSource? = nil
+        source = CGImageSourceCreateWithData((data as CFData?)!, nil)
+        // Get all the metadata in the image
+        let metadata = CGImageSourceCopyPropertiesAtIndex(source!, 0, nil) as? [AnyHashable: Any]
+        // Make the metadata dictionary mutable so we can add properties to it
+        var metadataAsMutable = metadata
+        var EXIFDictionary = (metadataAsMutable?[(kCGImagePropertyExifDictionary as String)]) as? [AnyHashable: Any]
+        var GPSDictionary = (metadataAsMutable?[(kCGImagePropertyGPSDictionary as String)]) as? [AnyHashable: Any]
+        
+        if !(EXIFDictionary != nil) {
+            // If the image does not have an EXIF dictionary (not all images do), then create one.
+            EXIFDictionary = [:]
+        }
+        if !(GPSDictionary != nil) {
+            GPSDictionary = [:]
+        }
+        
+        // add coordinates in the GPS Dictionary
+        //    GPSDictionary![(kCGImagePropertyGPSLatitude as String)] = "12.123"
+        //    GPSDictionary![(kCGImagePropertyGPSLongitude as String)] = "13.123"
+        EXIFDictionary![(kCGImagePropertyExifUserComment as String)] = userComment
+        
+        
+        // Add our modified EXIF data back into the image’s metadata
+        metadataAsMutable!.updateValue(GPSDictionary!, forKey: kCGImagePropertyGPSDictionary)
+        metadataAsMutable!.updateValue(EXIFDictionary!, forKey: kCGImagePropertyExifDictionary)
+        
+        // This is the type of image (e.g., public.jpeg)
+        let UTI: CFString = CGImageSourceGetType(source!)!
+        
+        // This will be the data CGImageDestinationRef will write into
+        let dest_data = NSMutableData()
+        let destination: CGImageDestination = CGImageDestinationCreateWithData(dest_data as CFMutableData, UTI, 1, nil)!
+        // Add the image contained in the image source to the destination, overidding the old metadata with our modified metadata
+        CGImageDestinationAddImageFromSource(destination, source!, 0, (metadataAsMutable as CFDictionary?))
+        
+        // Tells the destination to write the image data and metadata into our data object.
+        // It will return false if something goes wrong
+        _ = CGImageDestinationFinalize(destination)
+        
+        return (dest_data as Data)
+    }
+    
+    /// Prints the Meta Data from the Data.
+    /// - Parameter data: Meta data will be printed of this object.
+    @objc public static func getMetaDataUserComment(from data: Data, needShowLog: Bool = false) -> String {
+        if let imageSource = CGImageSourceCreateWithData(data as CFData, nil) {
+            let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil)
+            if let dict = imageProperties as? [String: Any] {
+                if(needShowLog) {
+                    print(dict)
+                }
+                if let exif = dict[kCGImagePropertyExifDictionary as String] as? [String: Any], let userComment = exif[kCGImagePropertyExifUserComment as String] as? String {
+                    return userComment
+                }
+            }
+        }
+        return ""
     }
 }
