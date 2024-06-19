@@ -84,3 +84,6 @@ fastlane/README.md
 
 .bundle/
 vendor/
+Sources/Talk Call/DistributionSummary.plist
+Sources/Talk Call/ExportOptions.plist
+Sources/Talk Call/Packaging.log
