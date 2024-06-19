@@ -85,9 +85,11 @@ public struct DefaultCacheSerializer: CacheSerializer {
     
     public func addUserCommentToJpeg(jpeg:Data?, original: Data?) -> Data? {
         if let jpegData = jpeg, let originalData = original {
-            let userComment = GeoTagImage.getMetaDataUserComment(from:originalData, needShowLog: true)
+            let userComment = GeoTagImage.getMetaDataUserComment(from:originalData)
             if userComment != "" {
                 let newData = GeoTagImage.mark(jpegData, userComment: userComment)
+                print("DKM >>> AFTER DOWNLOAD add user content: \(userComment)")
+                let _ = GeoTagImage.getMetaDataUserComment(from:newData, needShowLog: true)
                 return newData
             }
         }
